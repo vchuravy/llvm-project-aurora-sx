@@ -12,8 +12,9 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "llvm/ADT/StringSwitch.h"
 #include "llvm/IR/FPEnv.h"
+#include "llvm/ADT/StringSwitch.h"
+#include "llvm/IR/Metadata.h"
 
 namespace llvm {
 
@@ -91,4 +92,23 @@ getAPFloatRoundingMode(fp::RoundingMode RM) {
   }
   llvm_unreachable("Unexpected rounding mode");
 }
+
+Value *GetConstrainedFPExcept(LLVMContext &Context,
+                              fp::ExceptionBehavior UseExcept) {
+  Optional<StringRef> ExceptStr = ExceptionBehaviorToStr(UseExcept);
+  assert(ExceptStr.hasValue() && "Garbage strict exception behavior!");
+  auto *ExceptMDS = MDString::get(Context, ExceptStr.getValue());
+
+  return MetadataAsValue::get(Context, ExceptMDS);
 }
+
+Value *GetConstrainedFPRounding(LLVMContext &Context,
+                                fp::RoundingMode UseRounding) {
+  Optional<StringRef> RoundingStr = RoundingModeToStr(UseRounding);
+  assert(RoundingStr.hasValue() && "Garbage strict rounding mode!");
+  auto *RoundingMDS = MDString::get(Context, RoundingStr.getValue());
+
+  return MetadataAsValue::get(Context, RoundingMDS);
+}
+
+} // namespace llvm

@@ -22,6 +22,9 @@
 
 namespace llvm {
 
+class LLVMContext;
+class Value;
+
 namespace fp {
 
 /// Rounding mode used for floating point operations.
@@ -48,7 +51,7 @@ enum ExceptionBehavior : uint8_t {
   ebStrict   ///< This corresponds to "fpexcept.strict".
 };
 
-}
+} // namespace fp
 
 /// Returns a valid RoundingMode enumerator when given a string
 /// that is valid as input in constrained intrinsic rounding mode
@@ -70,5 +73,13 @@ Optional<StringRef> ExceptionBehaviorToStr(fp::ExceptionBehavior);
 /// Converts rounding mode represented by fp::RoundingMode to the rounding mode
 /// index used by APFloat. For fp::rmDynamic it returns None.
 Optional<APFloatBase::roundingMode> getAPFloatRoundingMode(fp::RoundingMode);
-}
+
+/// Return the IR Value representation of any ExceptionBehavior.
+Value *GetConstrainedFPExcept(LLVMContext &, fp::ExceptionBehavior);
+
+/// Return the IR Value representation of any RoundingMode.
+Value *GetConstrainedFPRounding(LLVMContext &, fp::RoundingMode);
+
+} // namespace llvm
+
 #endif
