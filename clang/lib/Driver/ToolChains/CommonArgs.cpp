@@ -15,6 +15,7 @@
 #include "Arch/Sparc.h"
 #include "Arch/SystemZ.h"
 #include "Arch/X86.h"
+#include "Arch/VE.h"
 #include "AMDGPU.h"
 #include "MSP430.h"
 #include "HIP.h"
@@ -500,8 +501,11 @@ void tools::AddGoldPlugin(const ToolChain &ToolChain, const ArgList &Args,
 
 void tools::addArchSpecificRPath(const ToolChain &TC, const ArgList &Args,
                                  ArgStringList &CmdArgs) {
+  // Enable -frtlib-add-rpath by default for the case of VE.
+  const bool IsVE = TC.getTriple().isVE();
+  bool DefaultValue = IsVE;
   if (!Args.hasFlag(options::OPT_frtlib_add_rpath,
-                    options::OPT_fno_rtlib_add_rpath, false))
+                    options::OPT_fno_rtlib_add_rpath, DefaultValue))
     return;
 
   std::string CandidateRPath = TC.getArchSpecificLibPath();
@@ -1459,6 +1463,9 @@ void tools::getTargetFeatures(const ToolChain &TC, const llvm::Triple &Triple,
     break;
   case llvm::Triple::msp430:
     msp430::getMSP430TargetFeatures(D, Args, Features);
+    break;
+  case llvm::Triple::ve:
+    ve::getVETargetFeatures(D, Args, Features);
   }
 
   // Find the last of each feature.
