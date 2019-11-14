@@ -15,6 +15,7 @@
 #include "Arch/Sparc.h"
 #include "Arch/SystemZ.h"
 #include "Arch/X86.h"
+#include "Arch/VE.h"
 #include "AMDGPU.h"
 #include "CommonArgs.h"
 #include "Hexagon.h"
@@ -1434,6 +1435,10 @@ void Clang::RenderTargetOptions(const llvm::Triple &EffectiveTriple,
   case llvm::Triple::wasm64:
     AddWebAssemblyTargetArgs(Args, CmdArgs);
     break;
+
+  case llvm::Triple::ve:
+    AddVETargetArgs(Args, CmdArgs);
+    break;
   }
 }
 
@@ -1911,6 +1916,24 @@ void Clang::AddWebAssemblyTargetArgs(const ArgList &Args,
                    options::OPT_fvisibility_ms_compat)) {
     CmdArgs.push_back("-fvisibility");
     CmdArgs.push_back("hidden");
+  }
+}
+
+void Clang::AddVETargetArgs(const ArgList &Args,
+                            ArgStringList &CmdArgs) const {
+  ve::FloatABI FloatABI =
+      ve::getVEFloatABI(getToolChain().getDriver(), Args);
+
+  if (FloatABI == ve::FloatABI::Soft) {
+    // Floating point operations and argument passing are soft.
+    CmdArgs.push_back("-msoft-float");
+    CmdArgs.push_back("-mfloat-abi");
+    CmdArgs.push_back("soft");
+  } else {
+    // Floating point operations and argument passing are hard.
+    assert(FloatABI == ve::FloatABI::Hard && "Invalid float abi!");
+    CmdArgs.push_back("-mfloat-abi");
+    CmdArgs.push_back("hard");
   }
 }
 
@@ -5105,7 +5128,10 @@ void Clang::ConstructJob(Compilation &C, const JobAction &JA,
   // Enable vectorization per default according to the optimization level
   // selected. For optimization levels that want vectorization we use the alias
   // option to simplify the hasFlag logic.
-  bool EnableVec = shouldEnableVectorizerAtOLevel(Args, false);
+  // Disable vectorization by default for the case of VE temporary,
+  // until VE supports vector instructions.
+  const bool IsVE = TC.getTriple().isVE();
+  bool EnableVec = IsVE ? false : shouldEnableVectorizerAtOLevel(Args, false);
   OptSpecifier VectorizeAliasOption =
       EnableVec ? options::OPT_O_Group : options::OPT_fvectorize;
   if (Args.hasFlag(options::OPT_fvectorize, VectorizeAliasOption,
@@ -5113,7 +5139,7 @@ void Clang::ConstructJob(Compilation &C, const JobAction &JA,
     CmdArgs.push_back("-vectorize-loops");
 
   // -fslp-vectorize is enabled based on the optimization level selected.
-  bool EnableSLPVec = shouldEnableVectorizerAtOLevel(Args, true);
+  bool EnableSLPVec = IsVE ? false : shouldEnableVectorizerAtOLevel(Args, true);
   OptSpecifier SLPVectAliasOption =
       EnableSLPVec ? options::OPT_O_Group : options::OPT_fslp_vectorize;
   if (Args.hasFlag(options::OPT_fslp_vectorize, SLPVectAliasOption,
