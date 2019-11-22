@@ -2268,13 +2268,3 @@ def : Pat<(i32 (and i32:$lhs, 0xffff)),
           (AND32rm0 $lhs, 48)>;
 def : Pat<(i32 (and i32:$lhs, 0xffffffff)),
           (AND32rm0 $lhs, 32)>;
-
-// vector instructions
-include "VEInstrVec.td"
-include "VEInstrVecVL.td"
-
-// generic vector instruction patterns
-include "VEInstrPatternsVec.td"
-
-// vevlintrin
-include "VEInstrIntrinsicVL.td"
