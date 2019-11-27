@@ -101,26 +101,6 @@ bool VEDAGToDAGISel::SelectADDRri(SDValue Addr,
         return true;
       }
     }
-#if 0
-    // Disable ADDRri optimization to combine VEISD::Lo and ADDri instruction
-    // since following instruction works if and only if data section is
-    // smaller than 2GB.
-    //
-    //   LEASL %var1, sym@hi
-    //   LD    %var2, sym@lo(%var1)   ; this uses SEXT(sym@lo), so sym@lo
-    //                                ; must be lower than 2GB (0x80000000)
-
-    if (Addr.getOperand(0).getOpcode() == VEISD::Lo) {
-      Base = Addr.getOperand(1);
-      Offset = Addr.getOperand(0).getOperand(0);
-      return true;
-    }
-    if (Addr.getOperand(1).getOpcode() == VEISD::Lo) {
-      Base = Addr.getOperand(0);
-      Offset = Addr.getOperand(1).getOperand(0);
-      return true;
-    }
-#endif
   }
   Base = Addr;
   Offset = CurDAG->getTargetConstant(0, SDLoc(Addr), MVT::i32);
@@ -147,11 +127,6 @@ bool VEDAGToDAGISel::SelectADDRrr(SDValue Addr, SDValue &R1, SDValue &R2) {
   }
 
   return false;  // Let the reg+imm pattern catch this!
-#if 0
-  R1 = Addr;
-  R2 = CurDAG->getRegister(SP::G0, TLI->getPointerTy(CurDAG->getDataLayout()));
-  return true;
-#endif
 }
 
 
@@ -233,93 +208,6 @@ bool VEDAGToDAGISel::tryInlineAsm(SDNode *N){
 
     // No IntPairRegister on VE
     continue;
-#if 0
-    assert((i+2 < NumOps) && "Invalid number of operands in inline asm");
-    SDValue V0 = N->getOperand(i+1);
-    SDValue V1 = N->getOperand(i+2);
-    unsigned Reg0 = cast<RegisterSDNode>(V0)->getReg();
-    unsigned Reg1 = cast<RegisterSDNode>(V1)->getReg();
-    SDValue PairedReg;
-    MachineRegisterInfo &MRI = MF->getRegInfo();
-
-    if (Kind == InlineAsm::Kind_RegDef ||
-        Kind == InlineAsm::Kind_RegDefEarlyClobber) {
-      // Replace the two GPRs with 1 GPRPair and copy values from GPRPair to
-      // the original GPRs.
-
-      unsigned GPVR = MRI.createVirtualRegister(&SP::IntPairRegClass);
-      PairedReg = CurDAG->getRegister(GPVR, MVT::v2i32);
-      SDValue Chain = SDValue(N,0);
-
-      SDNode *GU = N->getGluedUser();
-      SDValue RegCopy = CurDAG->getCopyFromReg(Chain, dl, GPVR, MVT::v2i32,
-                                               Chain.getValue(1));
-
-      // Extract values from a GPRPair reg and copy to the original GPR reg.
-      SDValue Sub0 = CurDAG->getTargetExtractSubreg(SP::sub_even, dl, MVT::i32,
-                                                    RegCopy);
-      SDValue Sub1 = CurDAG->getTargetExtractSubreg(SP::sub_odd, dl, MVT::i32,
-                                                    RegCopy);
-      SDValue T0 = CurDAG->getCopyToReg(Sub0, dl, Reg0, Sub0,
-                                        RegCopy.getValue(1));
-      SDValue T1 = CurDAG->getCopyToReg(Sub1, dl, Reg1, Sub1, T0.getValue(1));
-
-      // Update the original glue user.
-      std::vector<SDValue> Ops(GU->op_begin(), GU->op_end()-1);
-      Ops.push_back(T1.getValue(1));
-      CurDAG->UpdateNodeOperands(GU, Ops);
-    }
-    else {
-      // For Kind  == InlineAsm::Kind_RegUse, we first copy two GPRs into a
-      // GPRPair and then pass the GPRPair to the inline asm.
-      SDValue Chain = AsmNodeOperands[InlineAsm::Op_InputChain];
-
-      // As REG_SEQ doesn't take RegisterSDNode, we copy them first.
-      SDValue T0 = CurDAG->getCopyFromReg(Chain, dl, Reg0, MVT::i32,
-                                          Chain.getValue(1));
-      SDValue T1 = CurDAG->getCopyFromReg(Chain, dl, Reg1, MVT::i32,
-                                          T0.getValue(1));
-      SDValue Pair = SDValue(
-          CurDAG->getMachineNode(
-              TargetOpcode::REG_SEQUENCE, dl, MVT::v2i32,
-              {
-                  CurDAG->getTargetConstant(SP::IntPairRegClassID, dl,
-                                            MVT::i32),
-                  T0,
-                  CurDAG->getTargetConstant(SP::sub_even, dl, MVT::i32),
-                  T1,
-                  CurDAG->getTargetConstant(SP::sub_odd, dl, MVT::i32),
-              }),
-          0);
-
-      // Copy REG_SEQ into a GPRPair-typed VR and replace the original two
-      // i32 VRs of inline asm with it.
-      unsigned GPVR = MRI.createVirtualRegister(&SP::IntPairRegClass);
-      PairedReg = CurDAG->getRegister(GPVR, MVT::v2i32);
-      Chain = CurDAG->getCopyToReg(T1, dl, GPVR, Pair, T1.getValue(1));
-
-      AsmNodeOperands[InlineAsm::Op_InputChain] = Chain;
-      Glue = Chain.getValue(1);
-    }
-
-    Changed = true;
-
-    if(PairedReg.getNode()) {
-      OpChanged[OpChanged.size() -1 ] = true;
-      Flag = InlineAsm::getFlagWord(Kind, 1 /* RegNum*/);
-      if (IsTiedToChangedOp)
-        Flag = InlineAsm::getFlagWordForMatchingOp(Flag, DefIdx);
-      else
-        Flag = InlineAsm::getFlagWordForRegClass(Flag, SP::IntPairRegClassID);
-      // Replace the current flag.
-      AsmNodeOperands[AsmNodeOperands.size() -1] = CurDAG->getTargetConstant(
-          Flag, dl, MVT::i32);
-      // Add the new register node and skip the original two GPRs.
-      AsmNodeOperands.push_back(PairedReg);
-      // Skip the next two GPRs.
-      i += 2;
-    }
-#endif
   }
 
   if (Glue.getNode())
@@ -351,42 +239,6 @@ void VEDAGToDAGISel::Select(SDNode *N) {
   case VEISD::GLOBAL_BASE_REG:
     ReplaceNode(N, getGlobalBaseReg());
     return;
-
-#if 0
-  case ISD::SDIV:
-  case ISD::UDIV: {
-    // sdivx / udivx handle 64-bit divides.
-    if (N->getValueType(0) == MVT::i64)
-      break;
-    // FIXME: should use a custom expander to expose the SRA to the dag.
-    SDValue DivLHS = N->getOperand(0);
-    SDValue DivRHS = N->getOperand(1);
-
-    // Set the Y register to the high-part.
-    SDValue TopPart;
-    if (N->getOpcode() == ISD::SDIV) {
-      TopPart = SDValue(CurDAG->getMachineNode(SP::SRAri, dl, MVT::i32, DivLHS,
-                                   CurDAG->getTargetConstant(31, dl, MVT::i32)),
-                        0);
-    } else {
-      TopPart = CurDAG->getRegister(SP::G0, MVT::i32);
-    }
-    TopPart = CurDAG->getCopyToReg(CurDAG->getEntryNode(), dl, SP::Y, TopPart,
-                                   SDValue())
-                  .getValue(1);
-
-    // FIXME: Handle div by immediate.
-    unsigned Opcode = N->getOpcode() == ISD::SDIV ? SP::SDIVrr : SP::UDIVrr;
-    // SDIV is a hardware erratum on some LEON2 processors. Replace it with SDIVcc here.
-    if (((VETargetMachine&)TM).getSubtargetImpl()->performSDIVReplace()
-        &&
-        Opcode == SP::SDIVrr) {
-      Opcode = SP::SDIVCCrr;
-    }
-    CurDAG->SelectNodeTo(N, Opcode, MVT::i32, DivLHS, DivRHS, TopPart);
-    return;
-  }
-#endif
   }
 
   SelectCode(N);

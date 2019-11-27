@@ -137,9 +137,6 @@ static bool isCondBranchOpcode(int Opc) {
 }
 
 static bool isIndirectBranchOpcode(int Opc) {
-#if 0
-  return Opc == SP::BINDrr || Opc == SP::BINDri;
-#endif
   report_fatal_error("isIndirectBranchOpcode is not implemented yet");
 }
 
@@ -325,9 +322,6 @@ unsigned VEInstrInfo::removeBranch(MachineBasicBlock &MBB,
 
 bool VEInstrInfo::reverseBranchCondition(
     SmallVectorImpl<MachineOperand> &Cond) const {
-#if 0
-  assert(Cond.size() == 1);
-#endif
   VECC::CondCodes CC = static_cast<VECC::CondCodes>(Cond[0].getImm());
   Cond[0].setImm(GetOppositeBranchCondition(CC));
   return false;
@@ -489,15 +483,6 @@ bool VEInstrInfo::expandPostRAPseudo(MachineInstr &MI) const {
     assert(Subtarget.isTargetLinux() &&
            "Only Linux target is expected to contain LOAD_STACK_GUARD");
     report_fatal_error("expandPostRAPseudo for LOAD_STACK_GUARD is not implemented yet");
-#if 0
-    // offsetof(tcbhead_t, stack_guard) from sysdeps/sparc/nptl/tls.h in glibc.
-    const int64_t Offset = Subtarget.is64Bit() ? 0x28 : 0x14;
-    MI.setDesc(get(Subtarget.is64Bit() ? SP::LDXri : SP::LDri));
-    MachineInstrBuilder(*MI.getParent()->getParent(), MI)
-        .addReg(SP::G7)
-        .addImm(Offset);
-    return true;
-#endif
   }
   case VE::GETSTACKTOP: {
     return expandGetStackTopPseudo(MI);

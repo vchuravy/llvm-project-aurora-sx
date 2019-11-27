@@ -164,25 +164,6 @@ static void fixELFSymbolsInTLSFixupsImpl(const MCExpr *Expr, MCAssembler &Asm) {
 }
 
 void VEMCExpr::fixELFSymbolsInTLSFixups(MCAssembler &Asm) const {
-#if 0
-  switch(getKind()) {
-  default: return;
-  case VK_VE_TLS_GD_CALL:
-  case VK_VE_TLS_LDM_CALL: {
-    // The corresponding relocations reference __tls_get_addr, as they call it,
-    // but this is only implicit; we must explicitly add it to our symbol table
-    // to bind it for these uses.
-    MCSymbol *Symbol = Asm.getContext().getOrCreateSymbol("__tls_get_addr");
-    Asm.registerSymbol(*Symbol);
-    auto ELFSymbol = cast<MCSymbolELF>(Symbol);
-    if (!ELFSymbol->isBindingSet()) {
-      ELFSymbol->setBinding(ELF::STB_GLOBAL);
-      ELFSymbol->setExternal(true);
-    }
-    LLVM_FALLTHROUGH;
-  }
-  }
-#endif
   fixELFSymbolsInTLSFixupsImpl(getSubExpr(), Asm);
 }
 

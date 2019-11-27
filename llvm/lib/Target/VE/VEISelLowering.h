@@ -100,10 +100,6 @@ namespace llvm {
 
     const char *getTargetNodeName(unsigned Opcode) const override;
 
-#if 0
-    SDValue PerformDAGCombine(SDNode *N, DAGCombinerInfo &DCI) const override;
-#endif
-
     ConstraintType getConstraintType(StringRef Constraint) const override;
     ConstraintWeight
     getSingleConstraintMatchWeight(AsmOperandInfo &info,

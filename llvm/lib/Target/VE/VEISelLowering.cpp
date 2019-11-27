@@ -255,27 +255,6 @@ VETargetLowering::LowerFormalArguments(SDValue Chain, CallingConv::ID CallConv,
   // Skip the 176 bytes of register save area.
   FuncInfo->setVarArgsFrameOffset(ArgOffset + ArgsBaseOffset);
 
-#if 0
-// VE ABI requires to store values in stack by caller side.
-// So no need to store varargs here.
-  // Save the variable arguments that were passed in registers.
-  // The caller is required to reserve stack space for 8 arguments regardless
-  // of how many arguments were actually passed.
-  SmallVector<SDValue, 8> OutChains;
-  for (; ArgOffset < 8*8; ArgOffset += 8) {
-    unsigned VReg = MF.addLiveIn(VE::SX0 + ArgOffset/8, &VE::I64RegClass);
-    SDValue VArg = DAG.getCopyFromReg(Chain, DL, VReg, MVT::i64);
-    int FI = MF.getFrameInfo().CreateFixedObject(8, ArgOffset + ArgsBaseOffset, true);
-    auto PtrVT = getPointerTy(MF.getDataLayout());
-    OutChains.push_back(
-        DAG.getStore(Chain, DL, VArg, DAG.getFrameIndex(FI, PtrVT),
-                     MachinePointerInfo::getFixedStack(MF, FI)));
-  }
-
-  if (!OutChains.empty())
-    Chain = DAG.getNode(ISD::TokenFactor, DL, MVT::Other, OutChains);
-#endif
-
   return Chain;
 }
 
@@ -921,22 +900,6 @@ VETargetLowering::VETargetLowering(const TargetMachine &TM,
   setOperationAction(ISD::MULHS,     MVT::i32, Expand);
   //setOperationAction(ISD::MUL,       MVT::i32, Expand);
 
-  // FIXME: VE's i64 MUL stuff is not investigated yet.
-#if 0
-  if (Subtarget->useSoftMulDiv()) {
-    // .umul works for both signed and unsigned
-    setOperationAction(ISD::SMUL_LOHI, MVT::i32, Expand);
-    setOperationAction(ISD::UMUL_LOHI, MVT::i32, Expand);
-    setLibcallName(RTLIB::MUL_I32, ".umul");
-
-    setOperationAction(ISD::SDIV, MVT::i32, Expand);
-    setLibcallName(RTLIB::SDIV_I32, ".div");
-
-    setOperationAction(ISD::UDIV, MVT::i32, Expand);
-    setLibcallName(RTLIB::UDIV_I32, ".udiv");
-  }
-#endif
-
   if (1) {
     setOperationAction(ISD::UMUL_LOHI, MVT::i64, Expand);
     setOperationAction(ISD::SMUL_LOHI, MVT::i64, Expand);
@@ -1095,28 +1058,6 @@ void VETargetLowering::computeKnownBitsForTargetNode
     break;
   }
 }
-
-#if 0
-// Look at LHS/RHS/CC and see if they are a lowered setcc instruction.  If so
-// set LHS/RHS and VECC to the LHS/RHS of the setcc and VECC to the condition.
-static void LookThroughSetCC(SDValue &LHS, SDValue &RHS,
-                             ISD::CondCode CC, unsigned &VECC) {
-  if (isNullConstant(RHS) &&
-      CC == ISD::SETNE &&
-      (((LHS.getOpcode() == VEISD::SELECT_ICC ||
-         LHS.getOpcode() == VEISD::SELECT_XCC) &&
-        LHS.getOperand(3).getOpcode() == VEISD::CMPICC) ||
-       (LHS.getOpcode() == VEISD::SELECT_FCC &&
-        LHS.getOperand(3).getOpcode() == VEISD::CMPFCC)) &&
-      isOneConstant(LHS.getOperand(0)) &&
-      isNullConstant(LHS.getOperand(1))) {
-    SDValue CMPCC = LHS.getOperand(3);
-    VECC = cast<ConstantSDNode>(LHS.getOperand(2))->getZExtValue();
-    LHS = CMPCC.getOperand(0);
-    RHS = CMPCC.getOperand(1);
-  }
-}
-#endif
 
 // Convert to a target node and set target flags.
 SDValue VETargetLowering::withTargetFlags(SDValue Op, unsigned TF,
@@ -1474,28 +1415,6 @@ static SDValue LowerRETURNADDR(SDValue Op, SelectionDAG &DAG,
   if (TLI.verifyReturnAddressArgumentIsConstant(Op, DAG))
     return SDValue();
 
-#if 0
-  SDValue RetAddr;
-  if (depth == 0) {
-    auto PtrVT = TLI.getPointerTy(DAG.getDataLayout());
-    unsigned RetReg = MF.addLiveIn(VE::SX10, TLI.getRegClassFor(PtrVT));
-    RetAddr = DAG.getCopyFromReg(DAG.getEntryNode(), dl, RetReg, VT);
-    return RetAddr;
-  }
-
-  // Need frame address to find return address of the caller.
-  SDValue FrameAddr = getFRAMEADDR(depth - 1, Op, DAG, Subtarget);
-
-  unsigned Offset = (Subtarget->is64Bit()) ? 120 : 60;
-  SDValue Ptr = DAG.getNode(ISD::ADD,
-                            dl, VT,
-                            FrameAddr,
-                            DAG.getIntPtrConstant(Offset, dl));
-  RetAddr = DAG.getLoad(VT, dl, DAG.getEntryNode(), Ptr, MachinePointerInfo());
-
-  return RetAddr;
-#endif
-
   SDLoc dl(Op);
   unsigned Depth = cast<ConstantSDNode>(Op.getOperand(0))->getZExtValue();
 
@@ -1792,10 +1711,6 @@ SDValue VETargetLowering::LowerINTRINSIC_WO_CHAIN(SDValue Op,
   default: return SDValue();    // Don't custom lower most intrinsics.
   case Intrinsic::thread_pointer: {
     report_fatal_error("Intrinsic::thread_point is not implemented yet");
-#if 0
-    EVT PtrVT = getPointerTy(DAG.getDataLayout());
-    return DAG.getRegister(SP::G7, PtrVT);
-#endif
   }
   case Intrinsic::eh_sjlj_lsda: {
     MachineFunction &MF = DAG.getMachineFunction();
@@ -1850,11 +1765,6 @@ bool VETargetLowering::shouldExpandBuildVectorWithShuffles(
 
 SDValue VETargetLowering::
 LowerOperation(SDValue Op, SelectionDAG &DAG) const {
-
-#if 0
-  bool hasHardQuad = Subtarget->hasHardQuad();
-  bool isV9        = Subtarget->isV9();
-#endif
 
   switch (Op.getOpcode()) {
   default: llvm_unreachable("Should not custom lower this!");
@@ -2047,24 +1957,6 @@ VETargetLowering::EmitSjLjDispatchBlock(MachineInstr &MI,
   const VERegisterInfo &RI = TII->getRegisterInfo();
   // Add a register mask with no preserved registers.  This results in all
   // registers being marked as clobbered.
-#if 0
-  if (RI.hasBasePointer(*MF)) {
-    const bool FPIs64Bit =
-        Subtarget.isTarget64BitLP64() || Subtarget.isTargetNaCl64();
-    X86MachineFunctionInfo *MFI = MF->getInfo<X86MachineFunctionInfo>();
-    MFI->setRestoreBasePointer(MF);
-
-    unsigned FP = RI.getFrameRegister(*MF);
-    unsigned BP = RI.getBaseRegister();
-    unsigned Op = FPIs64Bit ? X86::MOV64rm : X86::MOV32rm;
-    addRegOffset(BuildMI(DispatchBB, DL, TII->get(Op), BP), FP, true,
-                 MFI->getRestoreBasePointerOffset())
-        .addRegMask(RI.getNoPreservedMask());
-  } else {
-    BuildMI(DispatchBB, DL, TII->get(X86::NOOP))
-        .addRegMask(RI.getNoPreservedMask());
-  }
-#endif
   BuildMI(DispatchBB, DL, TII->get(VE::NOP))
       .addRegMask(RI.getNoPreservedMask());
 
@@ -2150,42 +2042,6 @@ VETargetLowering::EmitSjLjDispatchBlock(MachineInstr &MI,
         .addImm(0);
     break;
   }
-#if 0
-  case MachineJumpTableInfo::EK_LabelDifference32: {
-    // This code is what regular architecture does, but nas doesn't generate
-    // LabelDifference32 correctly, so doesn't use this atm.
-
-    // for the case of PIC, generates these codes
-    unsigned OReg = MRI->createVirtualRegister(&VE::I64RegClass);
-    unsigned TReg = MRI->createVirtualRegister(&VE::I64RegClass);
-
-    unsigned Tmp1 = MRI->createVirtualRegister(&VE::I64RegClass);
-    unsigned Tmp2 = MRI->createVirtualRegister(&VE::I64RegClass);
-
-    // sll     Tmp1, IReg, 2
-    BuildMI(DispContBB, DL, TII->get(VE::SLLri), Tmp1)
-        .addReg(IReg)
-        .addImm(2);
-    // FIXME: combine these add and ldl into "ldl     OReg, *(BReg, Tmp1)"
-    // add     Tmp2, BReg, Tmp1
-    BuildMI(DispContBB, DL, TII->get(VE::ADXrr), Tmp2)
-        .addReg(Tmp1)
-        .addReg(BReg);
-    // ldl.sx  OReg, *(Tmp2)
-    BuildMI(DispContBB, DL, TII->get(VE::LDLri), OReg)
-        .addReg(Tmp2)
-        .addImm(0);
-    // adds.l  TReg, BReg, OReg
-    BuildMI(DispContBB, DL, TII->get(VE::ADXrr), TReg)
-        .addReg(OReg)
-        .addReg(BReg);
-    // jmpq *(TReg)
-    BuildMI(DispContBB, DL, TII->get(VE::BAri))
-        .addReg(TReg)
-        .addImm(0);
-    break;
-  }
-#endif
   case MachineJumpTableInfo::EK_Custom32: {
     // for the case of PIC, generates these codes
 
@@ -2312,207 +2168,6 @@ VETargetLowering::EmitInstrWithCustomInserter(MachineInstr &MI,
     return EmitSjLjDispatchBlock(MI, BB);
   }
 }
-
-#if 0
-MachineBasicBlock *
-VETargetLowering::emitEHSjLjLongJmp(MachineInstr &MI,
-                                       MachineBasicBlock *MBB) const {
-  DebugLoc DL = MI.getDebugLoc();
-  const TargetInstrInfo *TII = Subtarget->getInstrInfo();
-
-  MachineFunction *MF = MBB->getParent();
-  MachineRegisterInfo &MRI = MF->getRegInfo();
-  MachineInstrBuilder MIB;
-
-  MVT PVT = getPointerTy(MF->getDataLayout());
-  unsigned RegSize = PVT.getStoreSize();
-  assert(PVT == MVT::i32 && "Invalid Pointer Size!");
-
-  unsigned Buf = MI.getOperand(0).getReg();
-  unsigned JmpLoc = MRI.createVirtualRegister(&SP::I64RegClass);
-
-  // TO DO: If we do 64-bit handling, this perhaps should be FLUSHW, not TA 3
-  MIB = BuildMI(*MBB, MI, DL, TII->get(SP::TRAPri), SP::G0).addImm(3).addImm(SPCC::ICC_A);
-
-  // Instruction to restore FP
-  const unsigned FP  = SP::I6;
-  MIB = BuildMI(*MBB, MI, DL, TII->get(SP::LDri))
-            .addReg(FP)
-            .addReg(Buf)
-            .addImm(0);
-
-  // Instruction to load jmp location
-  MIB = BuildMI(*MBB, MI, DL, TII->get(SP::LDri))
-            .addReg(JmpLoc, RegState::Define)
-            .addReg(Buf)
-            .addImm(RegSize);
-
-  // Instruction to restore SP
-  const unsigned SP  = VE::SX11;
-  MIB = BuildMI(*MBB, MI, DL, TII->get(SP::LDri))
-            .addReg(SP)
-            .addReg(Buf)
-            .addImm(2 * RegSize);
-
-  // Instruction to restore I7
-  MIB = BuildMI(*MBB, MI, DL, TII->get(SP::LDri))
-            .addReg(SP::I7)
-            .addReg(Buf, RegState::Kill)
-            .addImm(3 * RegSize);
-
-  // Jump to JmpLoc
-  BuildMI(*MBB, MI, DL, TII->get(SP::JMPLrr)).addReg(SP::G0).addReg(JmpLoc, RegState::Kill).addReg(SP::G0);
-
-  MI.eraseFromParent();
-  return MBB;
-}
-
-MachineBasicBlock *
-VETargetLowering::emitEHSjLjSetJmp(MachineInstr &MI,
-                                      MachineBasicBlock *MBB) const {
-  DebugLoc DL = MI.getDebugLoc();
-  const TargetInstrInfo *TII = Subtarget->getInstrInfo();
-  const TargetRegisterInfo *TRI = Subtarget->getRegisterInfo();
-
-  MachineFunction *MF = MBB->getParent();
-  MachineRegisterInfo &MRI = MF->getRegInfo();
-  MachineInstrBuilder MIB;
-
-  MVT PVT = getPointerTy(MF->getDataLayout());
-  unsigned RegSize = PVT.getStoreSize();
-  assert(PVT == MVT::i32 && "Invalid Pointer Size!");
-
-  unsigned DstReg = MI.getOperand(0).getReg();
-  const TargetRegisterClass *RC = MRI.getRegClass(DstReg);
-  assert(TRI->isTypeLegalForClass(*RC, MVT::i32) && "Invalid destination!");
-  (void)TRI;
-  unsigned mainDstReg = MRI.createVirtualRegister(RC);
-  unsigned restoreDstReg = MRI.createVirtualRegister(RC);
-
-  // For v = setjmp(buf), we generate
-  //
-  // thisMBB:
-  //  buf[0] = FP
-  //  buf[RegSize] = restoreMBB <-- takes address of restoreMBB
-  //  buf[RegSize * 2] = O6
-  //  buf[RegSize * 3] = I7
-  //  Ensure restoreMBB remains in the relocations list (done using a bn instruction)
-  //  b mainMBB
-  //
-  // mainMBB:
-  //  v_main = 0
-  //  b sinkMBB
-  //
-  // restoreMBB:
-  //  v_restore = 1
-  //  --fall through--
-  //
-  // sinkMBB:
-  //  v = phi(main, restore)
-
-  const BasicBlock *BB = MBB->getBasicBlock();
-  MachineFunction::iterator It = ++MBB->getIterator();
-  MachineBasicBlock *thisMBB = MBB;
-  MachineBasicBlock *mainMBB = MF->CreateMachineBasicBlock(BB);
-  MachineBasicBlock *restoreMBB = MF->CreateMachineBasicBlock(BB);
-  MachineBasicBlock *sinkMBB = MF->CreateMachineBasicBlock(BB);
-
-  MF->insert(It, mainMBB);
-  MF->insert(It, restoreMBB);
-  MF->insert(It, sinkMBB);
-  restoreMBB->setHasAddressTaken();
-
-  // Transfer the remainder of BB and its successor edges to sinkMBB.
-  sinkMBB->splice(sinkMBB->begin(), MBB,
-                  std::next(MachineBasicBlock::iterator(MI)),
-                  MBB->end());
-  sinkMBB->transferSuccessorsAndUpdatePHIs(MBB);
-
-  unsigned LabelReg = MRI.createVirtualRegister(&SP::I64RegClass);
-  unsigned LabelReg2 = MRI.createVirtualRegister(&SP::I64RegClass);
-  unsigned BufReg = MI.getOperand(1).getReg();
-
-  // Instruction to store FP
-  const unsigned FP  = SP::I6;
-  MIB = BuildMI(thisMBB, DL, TII->get(SP::STri))
-            .addReg(BufReg)
-            .addImm(0)
-            .addReg(FP);
-
-  // Instructions to store jmp location
-  MIB = BuildMI(thisMBB, DL, TII->get(SP::SETHIi))
-            .addReg(LabelReg, RegState::Define)
-            .addMBB(restoreMBB, VEMCExpr::VK_VE_HI32);
-
-  MIB = BuildMI(thisMBB, DL, TII->get(SP::ORri))
-            .addReg(LabelReg2, RegState::Define)
-            .addReg(LabelReg, RegState::Kill)
-            .addMBB(restoreMBB, VEMCExpr::VK_VE_LO32);
-
-  MIB = BuildMI(thisMBB, DL, TII->get(SP::STri))
-            .addReg(BufReg)
-            .addImm(RegSize)
-            .addReg(LabelReg2, RegState::Kill);
-
-  // Instruction to store SP
-  const unsigned SP  = VE::SX11;
-  MIB = BuildMI(thisMBB, DL, TII->get(SP::STri))
-            .addReg(BufReg)
-            .addImm(2 * RegSize)
-            .addReg(SP);
-
-  // Instruction to store I7
-  MIB = BuildMI(thisMBB, DL, TII->get(SP::STri))
-            .addReg(BufReg)
-            .addImm(3 * RegSize)
-            .addReg(SP::I7);
-
-
-  // FIX ME: This next instruction ensures that the restoreMBB block address remains
-  // valid through optimization passes and serves no other purpose. The ICC_N ensures
-  // that the branch is never taken. This commented-out code here was an alternative
-  // attempt to achieve this which brought myriad problems.
-  //MIB = BuildMI(thisMBB, DL, TII->get(SP::EH_SjLj_Setup)).addMBB(restoreMBB, VEMCExpr::VK_VE_None);
-  MIB = BuildMI(thisMBB, DL, TII->get(SP::BCOND))
-              .addMBB(restoreMBB)
-              .addImm(SPCC::ICC_N);
-
-  MIB = BuildMI(thisMBB, DL, TII->get(SP::BCOND))
-              .addMBB(mainMBB)
-              .addImm(SPCC::ICC_A);
-
-  thisMBB->addSuccessor(mainMBB);
-  thisMBB->addSuccessor(restoreMBB);
-
-
-  // mainMBB:
-  MIB = BuildMI(mainMBB, DL, TII->get(SP::ORrr))
-             .addReg(mainDstReg, RegState::Define)
-             .addReg(SP::G0)
-             .addReg(SP::G0);
-  MIB = BuildMI(mainMBB, DL, TII->get(SP::BCOND)).addMBB(sinkMBB).addImm(SPCC::ICC_A);
-
-  mainMBB->addSuccessor(sinkMBB);
-
-
-  // restoreMBB:
-  MIB = BuildMI(restoreMBB, DL, TII->get(SP::ORri))
-              .addReg(restoreDstReg, RegState::Define)
-              .addReg(SP::G0)
-              .addImm(1);
-  //MIB = BuildMI(restoreMBB, DL, TII->get(SP::BCOND)).addMBB(sinkMBB).addImm(SPCC::ICC_A);
-  restoreMBB->addSuccessor(sinkMBB);
-
-  // sinkMBB:
-  MIB = BuildMI(*sinkMBB, sinkMBB->begin(), DL,
-                TII->get(SP::PHI), DstReg)
-             .addReg(mainDstReg).addMBB(mainMBB)
-             .addReg(restoreDstReg).addMBB(restoreMBB);
-
-  MI.eraseFromParent();
-  return sinkMBB;
-}
-#endif
 
 //===----------------------------------------------------------------------===//
 //                         VE Inline Assembly Support

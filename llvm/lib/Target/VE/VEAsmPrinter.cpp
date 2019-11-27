@@ -180,26 +180,6 @@ static void EmitANDrm0(MCStreamer &OutStreamer,
   EmitBinary(OutStreamer, VE::ANDrm0, RS1, Imm, RD, STI);
 }
 
-#if 0
-static void EmitOR(MCStreamer &OutStreamer,
-                   MCOperand &RS1, MCOperand &Imm, MCOperand &RD,
-                   const MCSubtargetInfo &STI) {
-  EmitBinary(OutStreamer, VE::ORri, RS1, Imm, RD, STI);
-}
-
-static void EmitADD(MCStreamer &OutStreamer,
-                    MCOperand &RS1, MCOperand &RS2, MCOperand &RD,
-                    const MCSubtargetInfo &STI) {
-  EmitBinary(OutStreamer, VE::ADDrr, RS1, RS2, RD, STI);
-}
-
-static void EmitSHL(MCStreamer &OutStreamer,
-                    MCOperand &RS1, MCOperand &Imm, MCOperand &RD,
-                    const MCSubtargetInfo &STI) {
-  EmitBinary(OutStreamer, VE::SLLri, RS1, Imm, RD, STI);
-}
-#endif
-
 static void EmitHiLo(MCStreamer &OutStreamer,  MCSymbol *GOTSym,
                      VEMCExpr::VariantKind HiKind,
                      VEMCExpr::VariantKind LoKind,
@@ -483,20 +463,6 @@ void VEAsmPrinter::EmitInstruction(const MachineInstr *MI)
 }
 
 void VEAsmPrinter::EmitFunctionBodyStart() {
-#if 0
-  const MachineRegisterInfo &MRI = MF->getRegInfo();
-  const unsigned globalRegs[] = { SP::G2, SP::G3, SP::G6, SP::G7, 0 };
-  for (unsigned i = 0; globalRegs[i] != 0; ++i) {
-    unsigned reg = globalRegs[i];
-    if (MRI.use_empty(reg))
-      continue;
-
-    if  (reg == SP::G6 || reg == SP::G7)
-      getTargetStreamer().emitVERegisterIgnore(reg);
-    else
-      getTargetStreamer().emitVERegisterScratch(reg);
-  }
-#endif
 }
 
 void VEAsmPrinter::printOperand(const MachineInstr *MI, int opNum,
@@ -504,58 +470,6 @@ void VEAsmPrinter::printOperand(const MachineInstr *MI, int opNum,
   const DataLayout &DL = getDataLayout();
   const MachineOperand &MO = MI->getOperand (opNum);
   VEMCExpr::VariantKind TF = (VEMCExpr::VariantKind) MO.getTargetFlags();
-
-#ifndef NDEBUG
-  // Verify the target flags.
-  if (MO.isGlobal() || MO.isSymbol() || MO.isCPI()) {
-#if 0
-    if (MI->getOpcode() == SP::CALL)
-      assert(TF == VEMCExpr::VK_VE_None &&
-             "Cannot handle target flags on call address");
-    else if (MI->getOpcode() == VE::LEASL)
-      assert((TF == VEMCExpr::VK_VE_HI
-              || TF == VEMCExpr::VK_VE_H44
-              || TF == VEMCExpr::VK_VE_HH
-              || TF == VEMCExpr::VK_VE_TLS_GD_HI22
-              || TF == VEMCExpr::VK_VE_TLS_LDM_HI22
-              || TF == VEMCExpr::VK_VE_TLS_LDO_HIX22
-              || TF == VEMCExpr::VK_VE_TLS_IE_HI22
-              || TF == VEMCExpr::VK_VE_TLS_LE_HIX22) &&
-             "Invalid target flags for address operand on sethi");
-    else if (MI->getOpcode() == SP::TLS_CALL)
-      assert((TF == VEMCExpr::VK_VE_None
-              || TF == VEMCExpr::VK_VE_TLS_GD_CALL
-              || TF == VEMCExpr::VK_VE_TLS_LDM_CALL) &&
-             "Cannot handle target flags on tls call address");
-    else if (MI->getOpcode() == SP::TLS_ADDrr)
-      assert((TF == VEMCExpr::VK_VE_TLS_GD_ADD
-              || TF == VEMCExpr::VK_VE_TLS_LDM_ADD
-              || TF == VEMCExpr::VK_VE_TLS_LDO_ADD
-              || TF == VEMCExpr::VK_VE_TLS_IE_ADD) &&
-             "Cannot handle target flags on add for TLS");
-    else if (MI->getOpcode() == SP::TLS_LDrr)
-      assert(TF == VEMCExpr::VK_VE_TLS_IE_LD &&
-             "Cannot handle target flags on ld for TLS");
-    else if (MI->getOpcode() == SP::TLS_LDXrr)
-      assert(TF == VEMCExpr::VK_VE_TLS_IE_LDX &&
-             "Cannot handle target flags on ldx for TLS");
-    else if (MI->getOpcode() == SP::XORri || MI->getOpcode() == SP::XORXri)
-      assert((TF == VEMCExpr::VK_VE_TLS_LDO_LOX10
-              || TF == VEMCExpr::VK_VE_TLS_LE_LOX10) &&
-             "Cannot handle target flags on xor for TLS");
-    else
-      assert((TF == VEMCExpr::VK_VE_LO
-              || TF == VEMCExpr::VK_VE_M44
-              || TF == VEMCExpr::VK_VE_L44
-              || TF == VEMCExpr::VK_VE_HM
-              || TF == VEMCExpr::VK_VE_TLS_GD_LO10
-              || TF == VEMCExpr::VK_VE_TLS_LDM_LO10
-              || TF == VEMCExpr::VK_VE_TLS_IE_LO10 ) &&
-             "Invalid target flags for small address operand");
-#endif
-  }
-#endif
-
 
   bool CloseParen = VEMCExpr::printVariantKind(O, TF);
 

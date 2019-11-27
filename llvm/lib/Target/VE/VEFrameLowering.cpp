@@ -160,10 +160,6 @@ void VEFrameLowering::emitSPExtend(MachineFunction &MF,
 
 void VEFrameLowering::emitPrologue(MachineFunction &MF,
                                       MachineBasicBlock &MBB) const {
-#if 0
-  VEMachineFunctionInfo *FuncInfo = MF.getInfo<VEMachineFunctionInfo>();
-#endif
-
   assert(&MF.front() == &MBB && "Shrink-wrapping not yet supported");
   MachineFrameInfo &MFI = MF.getFrameInfo();
   const VESubtarget &Subtarget = MF.getSubtarget<VESubtarget>();
@@ -189,12 +185,6 @@ void VEFrameLowering::emitPrologue(MachineFunction &MF,
 
   // Get the number of bytes to allocate from the FrameInfo
   int NumBytes = (int) MFI.getStackSize();
-#if 0
-  if (FuncInfo->isLeafProc()) {
-    if (NumBytes == 0)
-      return;
-  }
-#endif
   // The SPARC ABI is a bit odd in that it requires a reserved 92-byte
   // (128 in v9) area in the user's stack, starting at %sp. Thus, the
   // first part of the stack that can actually be used is located at
@@ -248,34 +238,6 @@ void VEFrameLowering::emitPrologue(MachineFunction &MF,
   CFIIndex = MF.addFrameInst(MCCFIInstruction::createWindowSave(nullptr));
   BuildMI(MBB, MBBI, dl, TII.get(TargetOpcode::CFI_INSTRUCTION))
       .addCFIIndex(CFIIndex);
-
-#if 0
-  unsigned regInRA = RegInfo.getDwarfRegNum(VE::I7, true);
-  unsigned regOutRA = RegInfo.getDwarfRegNum(VE::O7, true);
-  // Emit ".cfi_register 15, 31".
-  CFIIndex = MF.addFrameInst(
-      MCCFIInstruction::createRegister(nullptr, regOutRA, regInRA));
-  BuildMI(MBB, MBBI, dl, TII.get(TargetOpcode::CFI_INSTRUCTION))
-      .addCFIIndex(CFIIndex);
-#endif
-
-  if (NeedsStackRealignment) {
-#if 0
-    unsigned regUnbiased;
-    regUnbiased = VE::SX11; // %sp
-
-    // andn %regUnbiased, MaxAlign-1, %regUnbiased
-    int MaxAlign = MFI.getMaxAlignment();
-    BuildMI(MBB, MBBI, dl, TII.get(VE::ANDNri), regUnbiased)
-      .addReg(regUnbiased).addImm(MaxAlign - 1);
-
-    if (Bias) {
-      // add %g1, -BIAS, %o6
-      BuildMI(MBB, MBBI, dl, TII.get(VE::ADXri), VE::SX11)
-        .addReg(regUnbiased).addImm(-Bias);
-    }
-#endif
-  }
 }
 
 MachineBasicBlock::iterator VEFrameLowering::
@@ -297,33 +259,10 @@ eliminateCallFramePseudoInstr(MachineFunction &MF, MachineBasicBlock &MBB,
 void VEFrameLowering::emitEpilogue(MachineFunction &MF,
                                   MachineBasicBlock &MBB) const {
   MachineBasicBlock::iterator MBBI = MBB.getLastNonDebugInstr();
-#if 0
-  VEMachineFunctionInfo *FuncInfo = MF.getInfo<VEMachineFunctionInfo>();
-  const VEInstrInfo &TII =
-      *static_cast<const VEInstrInfo *>(MF.getSubtarget().getInstrInfo());
-#endif
   DebugLoc dl = MBBI->getDebugLoc();
-#if 0
-  assert(MBBI->getOpcode() == SP::RETL &&
-         "Can only put epilog before 'retl' instruction!");
-  if (!FuncInfo->isLeafProc()) {
-    BuildMI(MBB, MBBI, dl, TII.get(SP::RESTORErr), SP::G0).addReg(SP::G0)
-      .addReg(SP::G0);
-    return;
-  }
-#endif
   MachineFrameInfo &MFI = MF.getFrameInfo();
 
   int NumBytes = (int) MFI.getStackSize();
-#if 0
-  if (NumBytes == 0)
-    return;
-#endif
-
-#if 0
-  // emit stack adjust instructions
-  emitSPAdjustment(MF, MBB, MBBI, NumBytes);
-#endif
 
   // emit Epilogue instructions to restore %lr
   emitEpilogueInsns(MF, MBB, MBBI, NumBytes, true);
