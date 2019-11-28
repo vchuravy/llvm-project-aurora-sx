@@ -19,11 +19,6 @@ include "llvm/Target/Target.td"
 // VE Subtarget features.
 //
 
-def FeatureVectorize
-  : SubtargetFeature<"vec", "Vectorize", "true",
-                     "Try to vectorize (experimental)">;
-
-
 //===----------------------------------------------------------------------===//
 // Register File, Calling Conv, Instruction Descriptions
 //===----------------------------------------------------------------------===//

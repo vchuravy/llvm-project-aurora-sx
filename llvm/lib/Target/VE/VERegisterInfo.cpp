@@ -50,8 +50,6 @@ VERegisterInfo::getCalleeSavedRegs(const MachineFunction *MF) const {
   CallingConv::ID CC = F.getCallingConv();
 
   switch (CC) {
-  case CallingConv::X86_RegCall:
-    return CSR_RegCall_SaveList;
   default:
     return CSR_SaveList;
   }
@@ -61,8 +59,6 @@ const uint32_t *
 VERegisterInfo::getCallPreservedMask(const MachineFunction &MF,
                                         CallingConv::ID CC) const {
   switch (CC) {
-  case CallingConv::X86_RegCall:
-    return CSR_RegCall_RegMask;
   case CallingConv::VE_VEC_EXPF:
     return CSR_vec_expf_RegMask;
   case CallingConv::VE_LLVM_GROW_STACK:
@@ -180,10 +176,6 @@ BitVector VERegisterInfo::getReservedRegs(const MachineFunction &MF) const {
   Reserved.set(VE::PMC13);
   Reserved.set(VE::PMC14);
 
-  // reserve constant registers
-  Reserved.set(VE::VM0);
-  Reserved.set(VE::VMP0);
-
   // sx18-sx33 are callee-saved registers
   // sx34-sx63 are temporary registers
 
@@ -192,9 +184,6 @@ BitVector VERegisterInfo::getReservedRegs(const MachineFunction &MF) const {
 
 bool VERegisterInfo::isConstantPhysReg(unsigned PhysReg) const {
   switch (PhysReg) {
-  case VE::VM0:
-  case VE::VMP0:
-    return true;
   default:
     return false;
   }

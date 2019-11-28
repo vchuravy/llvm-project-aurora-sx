@@ -195,10 +195,6 @@ namespace llvm {
     SDValue LowerATOMIC_LOAD(SDValue Op, SelectionDAG &DAG) const;
     SDValue LowerATOMIC_STORE(SDValue Op, SelectionDAG &DAG) const;
 
-    // Should we expand the build vector with shuffles?
-    bool shouldExpandBuildVectorWithShuffles(EVT VT,
-        unsigned DefinedValues) const override;
-
     SDValue LowerEXTRACT_VECTOR_ELT(SDValue Op, SelectionDAG &DAG) const;
     SDValue LowerINSERT_VECTOR_ELT(SDValue Op, SelectionDAG &DAG) const;
 
