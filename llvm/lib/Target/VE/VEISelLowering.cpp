@@ -627,10 +627,6 @@ bool VETargetLowering::allowsMisalignedMemoryAccesses(EVT VT,
                                                       unsigned Align,
                                                       MachineMemOperand::Flags,
                                                       bool *Fast) const {
-  // VE requires aligned accesses for vector accesses
-  if (VT.isVector())
-    return false;
-
   if (Fast) {
     // It's fast anytime on VE
     *Fast = true;
