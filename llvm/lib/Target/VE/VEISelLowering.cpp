@@ -78,16 +78,6 @@ VETargetLowering::CanLowerReturn(CallingConv::ID CallConv, MachineFunction &MF,
 }
 
 SDValue
-VETargetLowering::LowerBitcast(SDValue Op, SelectionDAG &DAG) const {
-  if (Op.getSimpleValueType() == MVT::v256i64 && Op.getOperand(0).getSimpleValueType() == MVT::v256f64) {
-    LLVM_DEBUG(dbgs() << "Lowering bitcast of similar types.\n");
-    return Op.getOperand(0);
-  } else {
-    return Op;
-  }
-}
-
-SDValue
 VETargetLowering::LowerReturn(SDValue Chain, CallingConv::ID CallConv,
                               bool IsVarArg,
                               const SmallVectorImpl<ISD::OutputArg> &Outs,
@@ -1711,8 +1701,6 @@ LowerOperation(SDValue Op, SelectionDAG &DAG) const {
   case ISD::INTRINSIC_VOID:     return LowerINTRINSIC_VOID(Op, DAG);
   case ISD::INTRINSIC_W_CHAIN:  return LowerINTRINSIC_W_CHAIN(Op, DAG);
   case ISD::INTRINSIC_WO_CHAIN: return LowerINTRINSIC_WO_CHAIN(Op, DAG);
-
-  case ISD::BITCAST:            return LowerBitcast(Op, DAG);
 
   }
 }
