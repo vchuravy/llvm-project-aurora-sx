@@ -61,6 +61,17 @@ namespace llvm {
       GLOBAL_BASE_REG, // Global base reg for PIC.
       FLUSHW,      // FLUSH register windows to stack.
 
+      VEC_BROADCAST,   // a scalar value is broadcast across all vector lanes (Operand 0: the broadcast register)
+      VEC_SEQ,         // sequence vector match (Operand 0: the constant stride)
+
+      VEC_VMV,
+
+      /// Scatter and gather instructions.
+      VEC_GATHER,
+      VEC_SCATTER,
+
+      VEC_LVL,
+
       /// A wrapper node for TargetConstantPool, TargetJumpTable,
       /// TargetExternalSymbol, TargetGlobalAddress, TargetGlobalTLSAddress,
       /// MCSymbol and TargetBlockAddress.
@@ -154,6 +165,15 @@ namespace llvm {
     SDValue LowerToTLSLocalExecModel(SDValue Op, SelectionDAG &DAG) const;
     SDValue LowerConstantPool(SDValue Op, SelectionDAG &DAG) const;
     SDValue LowerBlockAddress(SDValue Op, SelectionDAG &DAG) const;
+    SDValue LowerBUILD_VECTOR(SDValue Op, SelectionDAG &DAG) const;
+
+    SDValue LowerBitcast(SDValue Op, SelectionDAG &DAG) const;
+
+    SDValue LowerVECTOR_SHUFFLE(SDValue Op, SelectionDAG &DAG) const;
+
+    SDValue LowerMGATHER_MSCATTER(SDValue Op, SelectionDAG &DAG) const;
+
+    SDValue LowerMLOAD(SDValue Op, SelectionDAG &DAG) const;
 
     SDValue LowerEH_SJLJ_SETJMP(SDValue Op, SelectionDAG &DAG) const;
     SDValue LowerEH_SJLJ_LONGJMP(SDValue Op, SelectionDAG &DAG) const;
@@ -174,6 +194,13 @@ namespace llvm {
     SDValue LowerATOMIC_FENCE(SDValue Op, SelectionDAG &DAG) const;
     SDValue LowerATOMIC_LOAD(SDValue Op, SelectionDAG &DAG) const;
     SDValue LowerATOMIC_STORE(SDValue Op, SelectionDAG &DAG) const;
+
+    // Should we expand the build vector with shuffles?
+    bool shouldExpandBuildVectorWithShuffles(EVT VT,
+        unsigned DefinedValues) const override;
+
+    SDValue LowerEXTRACT_VECTOR_ELT(SDValue Op, SelectionDAG &DAG) const;
+    SDValue LowerINSERT_VECTOR_ELT(SDValue Op, SelectionDAG &DAG) const;
 
     bool isFPImmLegal(const APFloat &Imm, EVT VT,
                       bool ForCodeSize) const override;
