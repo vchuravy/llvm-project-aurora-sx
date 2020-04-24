@@ -299,6 +299,17 @@ def retflag       : SDNode<"VEISD::RET_FLAG", SDTNone,
 
 def getGOT        : Operand<iPTR>;
 
+def VEeh_sjlj_setjmp: SDNode<"VEISD::EH_SJLJ_SETJMP",
+                             SDTypeProfile<1, 1, [SDTCisInt<0>,
+                                                  SDTCisPtrTy<1>]>,
+                             [SDNPHasChain, SDNPSideEffect]>;
+def VEeh_sjlj_longjmp: SDNode<"VEISD::EH_SJLJ_LONGJMP",
+                              SDTypeProfile<0, 1, [SDTCisPtrTy<0>]>,
+                              [SDNPHasChain, SDNPSideEffect]>;
+def VEeh_sjlj_setup_dispatch: SDNode<"VEISD::EH_SJLJ_SETUP_DISPATCH",
+                                     SDTypeProfile<0, 0, []>,
+                                     [SDNPHasChain, SDNPSideEffect]>;
+
 // GETFUNPLT for PIC
 def GetFunPLT : SDNode<"VEISD::GETFUNPLT", SDTIntUnaryOp>;
 
@@ -1054,6 +1065,11 @@ def SHMri : RM<
     "shm.l $sx, $addr">;
 }
 
+// Section 8.19.7 - NOP (No Operation)
+let sx = 0, cy = 0, sy = 0, cz = 0, sz = 0, hasSideEffects = 0 in
+def NOP : RR<0x79, (outs), (ins), "nop">;
+
+
 let cx = 0, sx = 0, cy = 0, sy = 0, cz = 0, sz = 0, hasSideEffects = 0 in
 def MONC : RR<
     0x3F, (outs), (ins),
@@ -1083,6 +1099,38 @@ def CALLr : RM<
     "bsic %lr, (,$sz)">;
 }
 
+}
+
+//===----------------------------------------------------------------------===//
+// SJLJ Exception handling intrinsics
+//===----------------------------------------------------------------------===//
+
+let hasSideEffects = 1, isBarrier = 1, isCodeGenOnly = 1,
+    usesCustomInserter = 1 in {
+  def EH_SjLj_SetJmp  : Pseudo<(outs I32:$dst), (ins I64:$buf),
+                               "# EH_SJLJ_SETJMP",
+                               [(set I32:$dst, (VEeh_sjlj_setjmp I64:$buf))]>;
+  let isTerminator = 1 in {
+  def EH_SjLj_LongJmp : Pseudo<(outs), (ins I64:$buf),
+                               "# EH_SJLJ_LONGJMP",
+                               [(VEeh_sjlj_longjmp I64:$buf)]>;
+  }
+}
+
+let isBarrier = 1, hasSideEffects = 1, usesCustomInserter = 1 in
+  def EH_SjLj_Setup_Dispatch : Pseudo<(outs), (ins), "# EH_SJLJ_SETUP_DISPATCH",
+                                      [(VEeh_sjlj_setup_dispatch)]>;
+
+let isBranch = 1, isTerminator = 1, isCodeGenOnly = 1 in
+  def EH_SjLj_Setup : Pseudo<(outs), (ins brtarget32:$dst),
+                             "# EH_SJlJ_SETUP $dst">;
+
+//===----------------------------------------------------------------------===//
+// Dummy instruction for CPU flow control
+//===----------------------------------------------------------------------===//
+
+let mayLoad = 1, mayStore = 0, hasSideEffects = 1, isTrap = 1 in {
+  def TRAP    : Pseudo<(outs), (ins), "# TRAP", [(trap)]>;
 }
 
 //===----------------------------------------------------------------------===//

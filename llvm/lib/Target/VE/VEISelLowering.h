@@ -24,11 +24,15 @@ namespace VEISD {
 enum NodeType : unsigned {
   FIRST_NUMBER = ISD::BUILTIN_OP_END,
 
+  EH_SJLJ_SETJMP,         // SjLj exception handling setjmp.
+  EH_SJLJ_LONGJMP,        // SjLj exception handling longjmp.
+  EH_SJLJ_SETUP_DISPATCH, // SjLj exception handling setup_dispatch.
+
   Hi,
   Lo, // Hi/Lo operations, typically on a global address.
 
-  GETFUNPLT,       // load function address through %plt insturction
-  GETTLSADDR,  // load address for TLS access
+  GETFUNPLT,  // load function address through %plt insturction
+  GETTLSADDR, // load address for TLS access
 
   CALL,            // A call instruction.
   RET_FLAG,        // Return with a flag operand.
@@ -47,6 +51,9 @@ public:
     return MVT::i32;
   }
 
+  MachineBasicBlock *
+  EmitInstrWithCustomInserter(MachineInstr &MI,
+                              MachineBasicBlock *MBB) const override;
   Register getRegisterByName(const char *RegName, LLT VT,
                              const MachineFunction &MF) const override;
 
@@ -81,8 +88,21 @@ public:
   SDValue LowerGlobalAddress(SDValue Op, SelectionDAG &DAG) const;
   SDValue LowerGlobalTLSAddress(SDValue Op, SelectionDAG &DAG) const;
   SDValue LowerToTLSGeneralDynamicModel(SDValue Op, SelectionDAG &DAG) const;
+
+  // SjLj
+  SDValue LowerEH_SJLJ_SETJMP(SDValue Op, SelectionDAG &DAG) const;
+  SDValue LowerEH_SJLJ_LONGJMP(SDValue Op, SelectionDAG &DAG) const;
+  SDValue LowerEH_SJLJ_SETUP_DISPATCH(SDValue Op, SelectionDAG &DAG) const;
   /// } Custom Lower
 
+  MachineBasicBlock *emitEHSjLjSetJmp(MachineInstr &MI,
+                                      MachineBasicBlock *MBB) const;
+  MachineBasicBlock *emitEHSjLjLongJmp(MachineInstr &MI,
+                                       MachineBasicBlock *MBB) const;
+  MachineBasicBlock *EmitSjLjDispatchBlock(MachineInstr &MI,
+                                           MachineBasicBlock *BB) const;
+  void SetupEntryBlockForSjLj(MachineInstr &MI, MachineBasicBlock *MBB,
+                              MachineBasicBlock *DispatchBB, int FI) const;
   SDValue withTargetFlags(SDValue Op, unsigned TF, SelectionDAG &DAG) const;
   SDValue makeHiLoPair(SDValue Op, unsigned HiTF, unsigned LoTF,
                        SelectionDAG &DAG) const;
