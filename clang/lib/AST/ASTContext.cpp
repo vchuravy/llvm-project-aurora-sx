@@ -103,6 +103,20 @@ enum FloatingRank {
   BFloat16Rank, Float16Rank, HalfRank, FloatRank, DoubleRank, LongDoubleRank, Float128Rank
 };
 
+unsigned getBoolVectorPaddedSize(unsigned TypeNumBits) {
+  const unsigned MinimalSize = 8; // FIXME Target->getCharWidth()
+  TypeNumBits = std::max<>(MinimalSize, TypeNumBits);
+
+  // Pad to the next power of two if above
+  bool IsNotPowerOfTwo = (TypeNumBits & (TypeNumBits - 1));
+  if (IsNotPowerOfTwo) {
+    TypeNumBits = llvm::NextPowerOf2(TypeNumBits);
+  }
+
+  assert(TypeNumBits != 0);
+  return TypeNumBits;
+}
+
 /// \returns location that is relevant when searching for Doc comments related
 /// to \p D.
 static SourceLocation getDeclLocForCommentSearch(const Decl *D,
@@ -1919,11 +1933,17 @@ TypeInfo ASTContext::getTypeInfoImpl(const Type *T) const {
     break;
   }
 
-  case Type::ExtVector:
-  case Type::Vector: {
+  case Type::Vector:
+  case Type::ExtVector: {
     const auto *VT = cast<VectorType>(T);
-    TypeInfo EltInfo = getTypeInfo(VT->getElementType());
-    Width = EltInfo.Width * VT->getNumElements();
+    bool IsBoolVector = VT->getElementType()->isBooleanType();
+    // 'vector_size' bool vectors are supported
+    if (IsBoolVector && (T->getTypeClass() == Type::Vector)) {
+      Width = getBoolVectorPaddedSize(VT->getNumElements());
+    } else {
+      TypeInfo EltInfo = getTypeInfo(VT->getElementType());
+      Width = EltInfo.Width * VT->getNumElements();
+    }
     Align = Width;
     // If the alignment is not a power of 2, round up to the next power of 2.
     // This happens for non-power-of-2 length vectors.

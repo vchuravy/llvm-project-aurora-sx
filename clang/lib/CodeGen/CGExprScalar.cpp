@@ -2079,7 +2079,30 @@ Value *ScalarExprEmitter::VisitCastExpr(CastExpr *CE) {
       }
     }
 
-    return Builder.CreateBitCast(Src, DstTy);
+    // SExt/Trunc Boolean vectors to fit the expected type
+    auto VecSrcTy = dyn_cast<llvm::VectorType>(Src->getType());
+    auto VecDstTy = dyn_cast<llvm::VectorType>(DstTy);
+    bool VectorElementCast =
+        VecSrcTy && VecDstTy &&
+        (VecSrcTy->getElementCount() == VecDstTy->getElementCount());
+    if (VecSrcTy && VecSrcTy->getElementType()->isIntegerTy(1)) {
+      // When casting with the same element count extend this to the native
+      // result size Otw, signextend to 'i8' as an intermediary
+      unsigned DstElemBits =
+          VectorElementCast ? DstTy->getScalarSizeInBits() : 8;
+
+      auto PlainIntTy = llvm::VectorType::get(Builder.getIntNTy(DstElemBits),
+                                              VecSrcTy->getElementCount());
+      Src = Builder.CreateSExt(Src, PlainIntTy);
+    }
+    Src = Builder.CreateBitCast(Src, DstTy);
+    if (VectorElementCast && VecDstTy->getElementType()->isIntegerTy(1)) {
+      auto PlainIntTy =
+          llvm::VectorType::get(Builder.getIntNTy(SrcTy->getScalarSizeInBits()),
+                                VecSrcTy->getElementCount());
+      Src = Builder.CreateTrunc(Src, PlainIntTy);
+    }
+    return Src;
   }
   case CK_AddressSpaceConversion: {
     Expr::EvalResult Result;
@@ -4641,6 +4664,17 @@ static Value *createCastsForTypeOfSameSize(CGBuilderTy &Builder,
   return Builder.CreateIntToPtr(Src, DstTy, Name);
 }
 
+static bool IsGenericBoolVector(QualType Ty) {
+  auto ClangVecTy = dyn_cast<VectorType>(Ty);
+  if (!ClangVecTy)
+    return false;
+
+  if (ClangVecTy->getVectorKind() != VectorType::GenericVector)
+    return false;
+
+  return ClangVecTy->getElementType()->isBooleanType();
+}
+
 Value *ScalarExprEmitter::VisitAsTypeExpr(AsTypeExpr *E) {
   Value *Src  = CGF.EmitScalarExpr(E->getSrcExpr());
   llvm::Type *DstTy = ConvertType(E->getType());
@@ -4650,6 +4684,11 @@ Value *ScalarExprEmitter::VisitAsTypeExpr(AsTypeExpr *E) {
     cast<llvm::VectorType>(SrcTy)->getNumElements() : 0;
   unsigned NumElementsDst = isa<llvm::VectorType>(DstTy) ?
     cast<llvm::VectorType>(DstTy)->getNumElements() : 0;
+
+  // Use bit vector expansion for generic boolean vectors
+  if (IsGenericBoolVector(E->getType())) {
+    return CGF.emitBoolVecConversion(Src, NumElementsDst, "astype");
+  }
 
   // Going from vec3 to non-vec3 is a special case and requires a shuffle
   // vector to get a vec4, then a bitcast if the target type is different.
@@ -4670,7 +4709,7 @@ Value *ScalarExprEmitter::VisitAsTypeExpr(AsTypeExpr *E) {
   // get a vec3.
   if (NumElementsSrc != 3 && NumElementsDst == 3) {
     if (!CGF.CGM.getCodeGenOpts().PreserveVec3Type) {
-      auto *Vec4Ty = llvm::FixedVectorType::get(
+      auto Vec4Ty = llvm::FixedVectorType::get(
           cast<llvm::VectorType>(DstTy)->getElementType(), 4);
       Src = createCastsForTypeOfSameSize(Builder, CGF.CGM.getDataLayout(), Src,
                                          Vec4Ty);
