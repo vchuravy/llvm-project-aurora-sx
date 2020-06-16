@@ -3,8 +3,8 @@
 
 typedef double __vr __attribute__((__vector_size__(2048)));
 typedef double __vm __attribute__((__vector_size__(32)));
-typedef unsigned long __vm256 __attribute__((__vector_size__(32)));
-typedef unsigned long __vm512 __attribute__((__vector_size__(64)));
+typedef bool __vm256 __attribute__((__vector_size__(256)));
+typedef bool __vm512 __attribute__((__vector_size__(512)));
 
 enum VShuffleCodes {
     VE_VSHUFFLE_YUYU =  0,
