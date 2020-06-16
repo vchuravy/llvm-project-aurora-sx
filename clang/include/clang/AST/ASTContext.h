@@ -3139,4 +3139,6 @@ typename clang::LazyGenerationalUpdatePtr<Owner, T, Update>::ValueType
   return Value;
 }
 
+unsigned getBoolVectorPaddedSize(unsigned TypeNumBits);
+
 #endif // LLVM_CLANG_AST_ASTCONTEXT_H
