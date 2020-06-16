@@ -3,8 +3,16 @@
 
 typedef double __vr __attribute__((__vector_size__(2048)));
 typedef double __vm __attribute__((__vector_size__(32)));
+#if __STDC_VERSION__ >= 199901L
+// For C99
+typedef _Bool __vm256 __attribute__((__vector_size__(256)));
+typedef _Bool __vm512 __attribute__((__vector_size__(512)));
+#endif
+#ifdef __cplusplus
+// For C++
 typedef bool __vm256 __attribute__((__vector_size__(256)));
 typedef bool __vm512 __attribute__((__vector_size__(512)));
+#endif
 
 enum VShuffleCodes {
     VE_VSHUFFLE_YUYU =  0,
