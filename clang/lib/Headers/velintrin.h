@@ -2,9 +2,21 @@
 #define __VEL_INTRIN_H__
 
 typedef double __vr __attribute__((__vector_size__(2048)));
-typedef double __vm __attribute__((__vector_size__(32)));
-typedef unsigned long __vm256 __attribute__((__vector_size__(32)));
-typedef unsigned long __vm512 __attribute__((__vector_size__(64)));
+#if __STDC_VERSION__ >= 199901L
+// For C99
+typedef _Bool __vm    __attribute__((__vector_size__(256)));
+typedef _Bool __vm256 __attribute__((__vector_size__(256)));
+typedef _Bool __vm512 __attribute__((__vector_size__(512)));
+#else
+#ifdef __cplusplus
+// For C++
+typedef bool __vm    __attribute__((__vector_size__(256)));
+typedef bool __vm256 __attribute__((__vector_size__(256)));
+typedef bool __vm512 __attribute__((__vector_size__(512)));
+#else
+#error need C++ or C99 to use vector intrinsics for VE
+#endif
+#endif
 
 enum VShuffleCodes {
     VE_VSHUFFLE_YUYU =  0,
