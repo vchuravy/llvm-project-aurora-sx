@@ -14,17 +14,17 @@ def : Pat<(i64 (int_ve_vl_pack_f32a ADDRrii:$addr)),
                              !add(32, 64)), 0,
                       (HI32 (i64 0x0000000100000001)))))>;
 
-def : Pat<(v4i64 (int_ve_vl_extract_vm512u v8i64:$vm)),
-          (v4i64 (EXTRACT_SUBREG v8i64:$vm, sub_vm_even))>;
+def : Pat<(v256i1 (int_ve_vl_extract_vm512u v512i1:$vm)),
+          (v256i1 (EXTRACT_SUBREG v512i1:$vm, sub_vm_even))>;
 
-def : Pat<(v4i64 (int_ve_vl_extract_vm512l v8i64:$vm)),
-          (v4i64 (EXTRACT_SUBREG v8i64:$vm, sub_vm_odd))>;
+def : Pat<(v256i1 (int_ve_vl_extract_vm512l v512i1:$vm)),
+          (v256i1 (EXTRACT_SUBREG v512i1:$vm, sub_vm_odd))>;
 
-def : Pat<(v8i64 (int_ve_vl_insert_vm512u v8i64:$vmx, v4i64:$vmy)),
-          (v8i64 (INSERT_SUBREG v8i64:$vmx, v4i64:$vmy, sub_vm_even))>;
+def : Pat<(v512i1 (int_ve_vl_insert_vm512u v512i1:$vmx, v256i1:$vmy)),
+          (v512i1 (INSERT_SUBREG v512i1:$vmx, v256i1:$vmy, sub_vm_even))>;
 
-def : Pat<(v8i64 (int_ve_vl_insert_vm512l v8i64:$vmx, v4i64:$vmy)),
-          (v8i64 (INSERT_SUBREG v8i64:$vmx, v4i64:$vmy, sub_vm_odd))>;
+def : Pat<(v512i1 (int_ve_vl_insert_vm512l v512i1:$vmx, v256i1:$vmy)),
+          (v512i1 (INSERT_SUBREG v512i1:$vmx, v256i1:$vmy, sub_vm_odd))>;
 
 
 include "VEInstrIntrinsicVL.gen.td"
