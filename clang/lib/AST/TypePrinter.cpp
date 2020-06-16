@@ -645,13 +645,18 @@ void TypePrinter::printVectorBefore(const VectorType *T, raw_ostream &OS) {
     printBefore(T->getElementType(), OS);
     break;
   case VectorType::GenericVector: {
-    // FIXME: We prefer to print the size directly here, but have no way
-    // to get the size of the type.
-    OS << "__attribute__((__vector_size__("
-       << T->getNumElements()
-       << " * sizeof(";
-    print(T->getElementType(), OS, StringRef());
-    OS << ")))) ";
+    if (T->getElementType()->isBooleanType()) {
+      // For a vector of boolean, the vector_size parameter is the number of
+      // bits.
+      OS << "__attribute__((__vector_size__(" << T->getNumElements() << "))) ";
+    } else {
+      // FIXME: We prefer to print the size directly here, but have no way
+      // to get the size of the type.
+      OS << "__attribute__((__vector_size__(" << T->getNumElements()
+         << " * sizeof(";
+      print(T->getElementType(), OS, StringRef());
+      OS << ")))) ";
+    }
     printBefore(T->getElementType(), OS);
     break;
   }
@@ -696,9 +701,13 @@ void TypePrinter::printDependentVectorBefore(
     OS << "__attribute__((__vector_size__(";
     if (T->getSizeExpr())
       T->getSizeExpr()->printPretty(OS, nullptr, Policy);
-    OS << " * sizeof(";
-    print(T->getElementType(), OS, StringRef());
-    OS << ")))) ";
+    if (T->getElementType()->isBooleanType()) {
+      OS << "))) ";
+    } else {
+      OS << " * sizeof(";
+      print(T->getElementType(), OS, StringRef());
+      OS << ")))) ";
+    }
     printBefore(T->getElementType(), OS);
     break;
   }

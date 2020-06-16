@@ -2470,10 +2470,10 @@ QualType Sema::BuildArrayType(QualType T, ArrayType::ArraySizeModifier ASM,
 
 QualType Sema::BuildVectorType(QualType CurType, Expr *SizeExpr,
                                SourceLocation AttrLoc) {
-  // The base type must be integer (not Boolean or enumeration) or float, and
+  // The base type must be boolean or integer (not enumeration) or float, and
   // can't already be a vector.
   if (!CurType->isDependentType() &&
-      (!CurType->isBuiltinType() || CurType->isBooleanType() ||
+      (!CurType->isBuiltinType() ||
        (!CurType->isIntegerType() && !CurType->isRealFloatingType()))) {
     Diag(AttrLoc, diag::err_attribute_invalid_vector_type) << CurType;
     return QualType();
@@ -2502,8 +2502,14 @@ QualType Sema::BuildVectorType(QualType CurType, Expr *SizeExpr,
         << SizeExpr->getSourceRange() << "vector";
     return QualType();
   }
-  uint64_t VectorSizeBits = VecSize.getZExtValue() * 8;
-  unsigned TypeSize = static_cast<unsigned>(Context.getTypeSize(CurType));
+
+  uint64_t VectorSizeBits =
+      CurType->isBooleanType()
+          ? VecSize.getZExtValue()
+          : VecSize.getZExtValue() * 8; // FIXME "bitsof(CharUnit)"
+  unsigned TypeSize = CurType->isBooleanType()
+                          ? 1
+                          : static_cast<unsigned>(Context.getTypeSize(CurType));
 
   if (VectorSizeBits == 0) {
     Diag(AttrLoc, diag::err_attribute_zero_size)
@@ -7564,13 +7570,13 @@ void Sema::adjustMemberFunctionCC(QualType &T, bool IsStatic, bool IsCtorOrDtor,
   T = Context.getAdjustedType(T, Wrapped);
 }
 
-/// HandleVectorSizeAttribute - this attribute is only applicable to integral
-/// and float scalars, although arrays, pointers, and function return values are
-/// allowed in conjunction with this construct. Aggregates with this attribute
-/// are invalid, even if they are of the same size as a corresponding scalar.
-/// The raw attribute should contain precisely 1 argument, the vector size for
-/// the variable, measured in bytes. If curType and rawAttr are well formed,
-/// this routine will return a new vector type.
+/// HandleVectorSizeAttribute - this attribute is only applicable to boolean,
+/// integral and float scalars, although arrays, pointers, and function return
+/// values are allowed in conjunction with this construct. Aggregates with this
+/// attribute are invalid, even if they are of the same size as a corresponding
+/// scalar. The raw attribute should contain precisely 1 argument, the vector
+/// size for the variable, measured in bytes. If curType and rawAttr are well
+/// formed, this routine will return a new vector type.
 static void HandleVectorSizeAttr(QualType &CurType, const ParsedAttr &Attr,
                                  Sema &S) {
   // Check the attribute arguments.
