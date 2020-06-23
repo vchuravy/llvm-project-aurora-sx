@@ -1422,6 +1422,7 @@ static bool hasVectorBeenPadded(const DICompositeType *CTy) {
 
   // Ensure we found the element count and that the actual size is wide
   // enough to contain the requested size.
+  dbgs() << "hasVectorBeenPadded: ActualSize " << ActualSize << ", NumVecElements " << NumVecElements << ", ElementSize " << ElementSize << "\n";
   assert(ActualSize >= (NumVecElements * ElementSize) && "Invalid vector size");
   return ActualSize != (NumVecElements * ElementSize);
 }
