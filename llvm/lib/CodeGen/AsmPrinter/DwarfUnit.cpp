@@ -790,6 +790,8 @@ void DwarfUnit::constructTypeDIE(DIE &Buffer, const DIDerivedType *DTy) {
   uint64_t Size = DTy->getSizeInBits() >> 3;
   uint16_t Tag = Buffer.getTag();
 
+  dbgs() << "constructTypeDIE: Name " << Name << "\n";
+
   // Map to main type, void will not have a type.
   const DIType *FromTy = DTy->getBaseType();
   if (FromTy)
@@ -1409,7 +1411,12 @@ static bool hasVectorBeenPadded(const DICompositeType *CTy) {
   // Obtain the size of each element in the vector.
   DIType *BaseTy = CTy->getBaseType();
   assert(BaseTy && "Unknown vector element type.");
-  const uint64_t ElementSize = BaseTy->getSizeInBits();
+  uint64_t ElementSize = BaseTy->getSizeInBits();
+  // FIXME: Correct vector boolean element size.
+  // VE doesn't have v*i8, so i8 must be boolean.  Those should be converted
+  // to v*i1 previously, but it is not.  We patch it at here ATM.
+  if (ElementSize == 8)
+    ElementSize = 1;
 
   // Locate the number of elements in the vector.
   const DINodeArray Elements = CTy->getElements();
