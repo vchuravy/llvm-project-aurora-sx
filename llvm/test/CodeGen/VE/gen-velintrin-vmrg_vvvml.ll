@@ -28,8 +28,8 @@ define dso_local void @vmrg_vvvml(i64*, i64*, i64*, i32*, i32) local_unnamed_add
   %20 = tail call <256 x double> @llvm.ve.vl.vld.vssl(i64 8, i8* %19, i32 %16)
   %21 = bitcast i32* %12 to i8*
   %22 = tail call <256 x double> @llvm.ve.vl.vldlzx.vssl(i64 4, i8* %21, i32 %16)
-  %23 = tail call <4 x i64> @llvm.ve.vl.vfmkwgt.mvl(<256 x double> %22, i32 %16)
-  %24 = tail call <256 x double> @llvm.ve.vl.vmrg.vvvml(<256 x double> %18, <256 x double> %20, <4 x i64> %23, i32 %16)
+  %23 = tail call <256 x i1> @llvm.ve.vl.vfmkwgt.mvl(<256 x double> %22, i32 %16)
+  %24 = tail call <256 x double> @llvm.ve.vl.vmrg.vvvml(<256 x double> %18, <256 x double> %20, <256 x i1> %23, i32 %16)
   %25 = bitcast i64* %9 to i8*
   tail call void @llvm.ve.vl.vst.vssl(<256 x double> %24, i64 8, i8* %25, i32 %16)
   %26 = getelementptr inbounds i64, i64* %9, i64 256
@@ -48,10 +48,10 @@ declare <256 x double> @llvm.ve.vl.vld.vssl(i64, i8*, i32) #1
 declare <256 x double> @llvm.ve.vl.vldlzx.vssl(i64, i8*, i32) #1
 
 ; Function Attrs: nounwind readnone
-declare <4 x i64> @llvm.ve.vl.vfmkwgt.mvl(<256 x double>, i32) #2
+declare <256 x i1> @llvm.ve.vl.vfmkwgt.mvl(<256 x double>, i32) #2
 
 ; Function Attrs: nounwind readnone
-declare <256 x double> @llvm.ve.vl.vmrg.vvvml(<256 x double>, <256 x double>, <4 x i64>, i32) #2
+declare <256 x double> @llvm.ve.vl.vmrg.vvvml(<256 x double>, <256 x double>, <256 x i1>, i32) #2
 
 ; Function Attrs: nounwind writeonly
 declare void @llvm.ve.vl.vst.vssl(<256 x double>, i64, i8*, i32) #3
