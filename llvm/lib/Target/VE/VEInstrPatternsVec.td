@@ -275,22 +275,18 @@ let Predicates = [IsVectorizeSubTarget] in {
 // Load for
 // v256i1, v512i1
 
-let Predicates = [IsVectorizeSubTarget] in {
-  def : Pat<(v256i1 (load ADDRrii:$addr)),
-            (LDVMrii ADDRrii:$addr)>;
-  def : Pat<(v512i1 (load ADDRrii:$addr)),
-            (LDVM512rii ADDRrii:$addr)>;
-}
+def : Pat<(v256i1 (load ADDRrii:$addr)),
+          (LDVMrii ADDRrii:$addr)>;
+def : Pat<(v512i1 (load ADDRrii:$addr)),
+          (LDVM512rii ADDRrii:$addr)>;
 
 // Store for
 // v256i1, v512i1
 
-let Predicates = [IsVectorizeSubTarget] in {
-  def : Pat<(store v256i1:$vx, ADDRrii:$addr),
-            (STVMrii ADDRrii:$addr, $vx)>;
-  def : Pat<(store v512i1:$vx, ADDRrii:$addr),
-            (STVM512rii ADDRrii:$addr, $vx)>;
-}
+def : Pat<(store v256i1:$vx, ADDRrii:$addr),
+          (STVMrii ADDRrii:$addr, $vx)>;
+def : Pat<(store v512i1:$vx, ADDRrii:$addr),
+          (STVM512rii ADDRrii:$addr, $vx)>;
 
 multiclass ext_for_vector_length<int length, ValueType vi32, ValueType vi64,
                                  ValueType vi1> {
