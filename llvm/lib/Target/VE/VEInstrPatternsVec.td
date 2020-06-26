@@ -54,6 +54,22 @@ let Predicates = [IsNotVectorizeSubTarget] in {
             (LVMyir 0, $sy))))))))>;
 }
 
+// Boardcast for vector mask register.
+def : Pat<(v256i1 (vec_broadcast (i32 0))),
+          (LVMxim_x 3, 0,
+          (LVMxim_x 2, 0,
+          (LVMxim_x 1, 0,
+          (LVMxim 0, 0))))>;
+def : Pat<(v512i1 (vec_broadcast (i32 0))),
+          (LVMyim_y 7, 0,
+          (LVMyim_y 6, 0,
+          (LVMyim_y 5, 0,
+          (LVMyim_y 4, 0,
+          (LVMyim_y 3, 0,
+          (LVMyim_y 2, 0,
+          (LVMyim_y 1, 0,
+          (LVMyim 0, 0))))))))>;
+
 //===----------------------------------------------------------------------===//
 // Vector Instruction Patterns for vectorize subtarget which is being
 // implemented experimatally.
