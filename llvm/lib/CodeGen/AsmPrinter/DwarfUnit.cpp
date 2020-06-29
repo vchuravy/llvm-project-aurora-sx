@@ -1412,11 +1412,13 @@ static bool hasVectorBeenPadded(const DICompositeType *CTy) {
   DIType *BaseTy = CTy->getBaseType();
   assert(BaseTy && "Unknown vector element type.");
   uint64_t ElementSize = BaseTy->getSizeInBits();
+#if 0
   // FIXME: Correct vector boolean element size.
   // VE doesn't have v*i8, so i8 must be boolean.  Those should be converted
   // to v*i1 previously, but it is not.  We patch it at here ATM.
   if (ElementSize == 8)
     ElementSize = 1;
+#endif
 
   // Locate the number of elements in the vector.
   const DINodeArray Elements = CTy->getElements();
