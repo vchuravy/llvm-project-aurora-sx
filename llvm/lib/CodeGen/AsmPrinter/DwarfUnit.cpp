@@ -790,8 +790,6 @@ void DwarfUnit::constructTypeDIE(DIE &Buffer, const DIDerivedType *DTy) {
   uint64_t Size = DTy->getSizeInBits() >> 3;
   uint16_t Tag = Buffer.getTag();
 
-  dbgs() << "constructTypeDIE: Name " << Name << "\n";
-
   // Map to main type, void will not have a type.
   const DIType *FromTy = DTy->getBaseType();
   if (FromTy)
@@ -1401,6 +1399,15 @@ DIE *DwarfUnit::getIndexTyDie() {
   return IndexTyDie;
 }
 
+/// Returns true if the given type is boolean.
+static bool isBoolean(const DIType *Ty) {
+  auto *BTy = cast<DIBasicType>(Ty);
+  if (!BTy)
+    return false;
+  unsigned Encoding = BTy->getEncoding();
+  return Encoding == dwarf::DW_ATE_boolean;
+}
+
 /// Returns true if the vector's size differs from the sum of sizes of elements
 /// the user specified.  This can occur if the vector has been rounded up to
 /// fit memory alignment constraints.
@@ -1409,16 +1416,10 @@ static bool hasVectorBeenPadded(const DICompositeType *CTy) {
   const uint64_t ActualSize = CTy->getSizeInBits();
 
   // Obtain the size of each element in the vector.
+  // Treat vector of boolean as vXi1.
   DIType *BaseTy = CTy->getBaseType();
   assert(BaseTy && "Unknown vector element type.");
-  uint64_t ElementSize = BaseTy->getSizeInBits();
-#if 0
-  // FIXME: Correct vector boolean element size.
-  // VE doesn't have v*i8, so i8 must be boolean.  Those should be converted
-  // to v*i1 previously, but it is not.  We patch it at here ATM.
-  if (ElementSize == 8)
-    ElementSize = 1;
-#endif
+  const uint64_t ElementSize = isBoolean(BaseTy) ? 1 : BaseTy->getSizeInBits();
 
   // Locate the number of elements in the vector.
   const DINodeArray Elements = CTy->getElements();
@@ -1431,7 +1432,6 @@ static bool hasVectorBeenPadded(const DICompositeType *CTy) {
 
   // Ensure we found the element count and that the actual size is wide
   // enough to contain the requested size.
-  dbgs() << "hasVectorBeenPadded: ActualSize " << ActualSize << ", NumVecElements " << NumVecElements << ", ElementSize " << ElementSize << "\n";
   assert(ActualSize >= (NumVecElements * ElementSize) && "Invalid vector size");
   return ActualSize != (NumVecElements * ElementSize);
 }
