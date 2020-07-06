@@ -1151,6 +1151,14 @@ void CodeGenFunction::EmitReturnStmt(const ReturnStmt &S) {
     RValue Result = EmitReferenceBindingToExpr(RV);
     Builder.CreateStore(Result.getScalarVal(), ReturnValue);
   } else {
+    llvm::dbgs() << "RVKind: ";
+    RV->getType().dump(llvm::dbgs());
+//    ReturnValue.dump(llvm::dbgs());
+//    llvm::dbgs() << "ReturnValue: " << ReturnValue << "\n";
+//    ReturnValue.getPointer().dump(llvm::dbgs());
+//    llvm::dbgs() << "ReturnValue: " << *ReturnValue.getPointer() << "\n";
+    ReturnValue.getPointer()->getType()->dump();
+//    llvm::dbgs() << "ReturnValue: " << *ReturnValue.getPointer()->getType() << "\n";
     switch (getEvaluationKind(RV->getType())) {
     case TEK_Scalar:
       Builder.CreateStore(EmitScalarExpr(RV), ReturnValue);

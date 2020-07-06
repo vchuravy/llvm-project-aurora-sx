@@ -1410,6 +1410,9 @@ void StoreInst::AssertOK() {
   assert(getOperand(0) && getOperand(1) && "Both operands must be non-null!");
   assert(getOperand(1)->getType()->isPointerTy() &&
          "Ptr must have pointer type!");
+  dbgs() << "AssertOK: " << *getOperand(0)->getType() << "\n";
+  dbgs() << *getOperand(1)->getType() << "\n";
+  dbgs() << *(cast<PointerType>(getOperand(1)->getType())->getElementType()) << "\n";
   assert(getOperand(0)->getType() ==
                  cast<PointerType>(getOperand(1)->getType())->getElementType()
          && "Ptr must be a pointer to Val type!");
@@ -1451,6 +1454,10 @@ StoreInst::StoreInst(Value *val, Value *addr, bool isVolatile, Align Align,
     : Instruction(Type::getVoidTy(val->getContext()), Store,
                   OperandTraits<StoreInst>::op_begin(this),
                   OperandTraits<StoreInst>::operands(this), InsertBefore) {
+  dbgs() << "StoreInst: Val: ";
+  val->getType()->dump();
+  dbgs() << "Addr: ";
+  addr->getType()->dump();
   Op<0>() = val;
   Op<1>() = addr;
   setVolatile(isVolatile);
